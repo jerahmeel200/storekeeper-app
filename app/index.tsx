@@ -6,18 +6,22 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { databaseService } from '../lib/database';
 import { Product } from '../types';
 
 export default function ProductList() {
   const { isInitialized, error } = useDatabase();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -117,7 +121,7 @@ export default function ProductList() {
           </Text>
         </View>
 
-        <View className="flex-row space-x-2">
+        <View className="flex-row space-x-2 gap-3">
           <TouchableOpacity
             onPress={() => router.push(`/edit-product?productId=${item.id}`)}
             className="p-2 rounded-full bg-blue-100"
@@ -158,7 +162,12 @@ export default function ProductList() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={insets.top + 10}
+      className="flex-1 bg-gray-50"
+      style={{ flex: 1 }}
+    >
       {/* Search Bar */}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
         <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
@@ -198,6 +207,6 @@ export default function ProductList() {
           contentContainerStyle={{ paddingVertical: 16 }}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }

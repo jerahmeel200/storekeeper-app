@@ -2,21 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { databaseService } from '../lib/database';
 import { CreateProductData } from '../types';
 
 export default function AddProduct() {
+  const insets = useSafeAreaInsets();
   const { isInitialized, error } = useDatabase();
   const [formData, setFormData] = useState<CreateProductData>({
     name: '',
@@ -164,9 +166,15 @@ export default function AddProduct() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-gray-50"
+      keyboardVerticalOffset={insets.bottom + 20}
+      style={{ flex: 1, backgroundColor: '#F9FAFB' }}
     >
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
         {/* Image Section */}
         <View className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
           <Text className="text-lg font-semibold text-gray-900 mb-4">

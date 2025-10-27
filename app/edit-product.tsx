@@ -25,6 +25,7 @@ export default function EditProduct() {
   const { productId } = useLocalSearchParams<{ productId: string }>();
   const { isInitialized } = useDatabase();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [product, setProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -221,7 +222,7 @@ export default function EditProduct() {
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => router.replace('/edit-product'),
           },
         ]
       );
@@ -244,75 +245,81 @@ export default function EditProduct() {
   // If the page was opened without a productId, show the product picker
   if (!productId) {
     return (
-      <View className="flex-1 bg-gray-50">
-        {/* Search Bar */}
-        <View className="bg-white px-4 py-3 border-b border-gray-200">
-          <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
-            <TextInput
-              className="flex-1 ml-2 text-gray-900"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChangeText={handleSearch}
-              placeholderTextColor="#9CA3AF"
-            />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 24}
+        className="flex-1 bg-gray-50"
+      >
+        <View className="flex-1 bg-gray-50">
+          {/* Search Bar */}
+          <View className="bg-white px-4 py-3 border-b border-gray-200">
+            <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
+              <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+              <TextInput
+                className="flex-1 ml-2 text-gray-900"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChangeText={handleSearch}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
           </View>
-        </View>
 
-        {/* Products List or Empty */}
-        {filteredProducts.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <Ionicons name="cube-outline" size={64} color="#9CA3AF" />
-            <Text className="text-lg font-medium text-gray-600 mt-4">
-              {loadingList ? 'Loading products...' : 'No products yet'}
-            </Text>
-            <Text className="text-gray-500 mt-2 text-center px-8">
-              {loadingList ? '' : 'Add a product first from the Add Product tab.'}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredProducts}
-            keyExtractor={(item) => item.id.toString()}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => router.push(`/edit-product?productId=${item.id}`)}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 mx-4"
-              >
-                <View className="flex-row items-start">
-                  {item.imageUri ? (
-                    <Image
-                      source={{ uri: item.imageUri }}
-                      className="w-16 h-16 rounded-lg mr-4"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View className="w-16 h-16 rounded-lg mr-4 bg-gray-200 items-center justify-center">
-                      <Ionicons name="image-outline" size={24} color="#9CA3AF" />
+          {/* Products List or Empty */}
+          {filteredProducts.length === 0 ? (
+            <View className="flex-1 items-center justify-center">
+              <Ionicons name="cube-outline" size={64} color="#9CA3AF" />
+              <Text className="text-lg font-medium text-gray-600 mt-4">
+                {loadingList ? 'Loading products...' : 'No products yet'}
+              </Text>
+              <Text className="text-gray-500 mt-2 text-center px-8">
+                {loadingList ? '' : 'Add a product first from the Add Product tab.'}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              keyExtractor={(item) => item.id.toString()}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => router.push(`/edit-product?productId=${item.id}`)}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 mx-4"
+                >
+                  <View className="flex-row items-start">
+                    {item.imageUri ? (
+                      <Image
+                        source={{ uri: item.imageUri }}
+                        className="w-16 h-16 rounded-lg mr-4"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-16 h-16 rounded-lg mr-4 bg-gray-200 items-center justify-center">
+                        <Ionicons name="image-outline" size={24} color="#9CA3AF" />
+                      </View>
+                    )}
+
+                    <View className="flex-1">
+                      <Text className="text-lg font-semibold text-gray-900 mb-1">
+                        {item.name}
+                      </Text>
+                      <Text className="text-sm text-gray-600 mb-1">Quantity: {item.quantity}</Text>
+                      <Text className="text-lg font-bold text-blue-600">${item.price.toFixed(2)}</Text>
                     </View>
-                  )}
 
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 mb-1">
-                      {item.name}
-                    </Text>
-                    <Text className="text-sm text-gray-600 mb-1">Quantity: {item.quantity}</Text>
-                    <Text className="text-lg font-bold text-blue-600">${item.price.toFixed(2)}</Text>
+                    <View className="items-center justify-center">
+                      <Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
+                    </View>
                   </View>
-
-                  <View className="items-center justify-center">
-                    <Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={{ paddingVertical: 16 }}
-          />
-        )}
-      </View>
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={{ paddingVertical: 16 }}
+            />
+          )}
+        </View>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -325,12 +332,11 @@ export default function EditProduct() {
     );
   }
 
-  const insets = useSafeAreaInsets();
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-gray-50"
+      keyboardVerticalOffset={insets.bottom + 20}
       style={{
         paddingBottom: Platform.select({
           android: insets.bottom > 0 ? insets.bottom : 0,
