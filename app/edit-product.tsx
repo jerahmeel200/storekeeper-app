@@ -1,18 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../contexts/DatabaseContext';
 import { databaseService } from '../lib/database';
 import { Product, UpdateProductData } from '../types';
@@ -22,6 +26,11 @@ export default function EditProduct() {
   const { isInitialized } = useDatabase();
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
   const [formData, setFormData] = useState<UpdateProductData>({
     name: '',
     quantity: 0,
@@ -32,10 +41,28 @@ export default function EditProduct() {
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
+    // If no productId is supplied (e.g. user opened the Edit tab directly),
+    // stop the initial loading state and load the product picker list.
+    if (!productId) {
+      setInitialLoading(false);
+      if (isInitialized) {
+        loadProductsList();
+      }
+      return;
+    }
+
     if (isInitialized && productId) {
       loadProduct();
     }
   }, [isInitialized, productId]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!productId && isInitialized) {
+        loadProductsList();
+      }
+    }, [productId, isInitialized])
+  );
 
   const loadProduct = async () => {
     try {
@@ -62,11 +89,46 @@ export default function EditProduct() {
     }
   };
 
-  const handleInputChange = (field: keyof UpdateProductData, value: string | number) => {
+  const loadProductsList = async () => {
+    if (!isInitialized) return;
+
+    try {
+      setLoadingList(true);
+      const allProducts = await databaseService.getAllProducts();
+      setProducts(allProducts);
+      setFilteredProducts(allProducts);
+    } catch (error) {
+      console.error('Error loading products for picker:', error);
+      Alert.alert('Error', 'Failed to load products');
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  // allow undefined so we can clear optional fields like imageUri
+  const handleInputChange = (field: keyof UpdateProductData, value: string | number | undefined) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredProducts(products);
+    } else {
+      const filtered = products.filter(p =>
+        p.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProductsList();
+    setRefreshing(false);
   };
 
   const pickImage = async () => {
@@ -179,21 +241,102 @@ export default function EditProduct() {
     );
   }
 
+  // If the page was opened without a productId, show the product picker
+  if (!productId) {
+    return (
+      <View className="flex-1 bg-gray-50">
+        {/* Search Bar */}
+        <View className="bg-white px-4 py-3 border-b border-gray-200">
+          <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
+            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+            <TextInput
+              className="flex-1 ml-2 text-gray-900"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChangeText={handleSearch}
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+        </View>
+
+        {/* Products List or Empty */}
+        {filteredProducts.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <Ionicons name="cube-outline" size={64} color="#9CA3AF" />
+            <Text className="text-lg font-medium text-gray-600 mt-4">
+              {loadingList ? 'Loading products...' : 'No products yet'}
+            </Text>
+            <Text className="text-gray-500 mt-2 text-center px-8">
+              {loadingList ? '' : 'Add a product first from the Add Product tab.'}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredProducts}
+            keyExtractor={(item) => item.id.toString()}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => router.push(`/edit-product?productId=${item.id}`)}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 mx-4"
+              >
+                <View className="flex-row items-start">
+                  {item.imageUri ? (
+                    <Image
+                      source={{ uri: item.imageUri }}
+                      className="w-16 h-16 rounded-lg mr-4"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="w-16 h-16 rounded-lg mr-4 bg-gray-200 items-center justify-center">
+                      <Ionicons name="image-outline" size={24} color="#9CA3AF" />
+                    </View>
+                  )}
+
+                  <View className="flex-1">
+                    <Text className="text-lg font-semibold text-gray-900 mb-1">
+                      {item.name}
+                    </Text>
+                    <Text className="text-sm text-gray-600 mb-1">Quantity: {item.quantity}</Text>
+                    <Text className="text-lg font-bold text-blue-600">${item.price.toFixed(2)}</Text>
+                  </View>
+
+                  <View className="items-center justify-center">
+                    <Ionicons name="chevron-forward-outline" size={20} color="#9CA3AF" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={{ paddingVertical: 16 }}
+          />
+        )}
+      </View>
+    );
+  }
+
   if (!product) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text className="text-lg font-medium text-red-600 mt-4">
-          Product not found
-        </Text>
+        <Text className="text-lg font-medium text-red-600 mt-4">Product not found</Text>
       </View>
     );
   }
+
+  const insets = useSafeAreaInsets();
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-gray-50"
+      style={{
+        paddingBottom: Platform.select({
+          android: insets.bottom > 0 ? insets.bottom : 0,
+          ios: 0
+        })
+      }}
     >
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
         {/* Image Section */}
@@ -285,7 +428,7 @@ export default function EditProduct() {
           </View>
 
           {/* Action Buttons */}
-          <View className="flex-row space-x-3">
+          <View className="flex-row space-x-3 gap-2">
             <TouchableOpacity
               onPress={() => router.back()}
               className="flex-1 py-4 rounded-lg bg-gray-200"
